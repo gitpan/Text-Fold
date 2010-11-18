@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Encode;
 
-$Text::Fold::VERSION = '0.1';
+$Text::Fold::VERSION = '0.2';
 
 sub import {
     no strict 'refs';
@@ -17,7 +17,7 @@ sub fold_text {
 
     my $line = Encode::decode_utf8($orig_line);
     my $turn_back_into_byte_string = $line eq $orig_line ? 0 : 1;
-    
+
     # split(/\n/, "foo\nbar\nbaz\n") is (foo, bar, baz) not (foo, bar, baz, '')
     # split(/\n/, "foo\nbar\nbaz\n\n\n") is (foo, bar, baz) not (foo, bar, baz, '', '', '')
     # So we need to count the trailing newlines in order to add them back at the end.
@@ -27,26 +27,28 @@ sub fold_text {
     #
     # Removing them (i.e. s///) is safe since the split() will essentially be removing them anyway.
     my $trailing_newlines_count = 0;
-    while($line =~ s/(?:\015\012|\012|\015)\z//g) { 
-        $trailing_newlines_count++
+    while ( $line =~ s/(?:\015\012|\012|\015)\z//g ) {
+        $trailing_newlines_count++;
     }
-    
+
+    # It was entirely newlines
+    if ( $line eq '' ) {
+        return defined $join ? $join : "\n" x $trailing_newlines_count;
+    }
+
     my @aggregate_tokens;
     my $part;    # buffer
 
-    LINE:
+  LINE:
     for $part ( split( /(?:\015\012|\012|\015)/, $line ) ) {
       PARSE_PART:
         {
-            if ($part eq '') {
+            if ( $part eq '' ) {
                 push @aggregate_tokens, $part;
-                next LINE;    
+                next LINE;
             }
-            
-            my @tokens = unpack(
-                "A$width" x ( CORE::length($part) / $width ) . ' A*',
-                $part
-            );
+
+            my @tokens = unpack( "A$width" x ( CORE::length($part) / $width ) . ' A*', $part );
 
             my $n;    # buffer
             my $last_index = $#tokens;
@@ -85,15 +87,15 @@ sub fold_text {
     }
 
     if ($trailing_newlines_count) {
-        for (1 .. $trailing_newlines_count) {
+        for ( 1 .. $trailing_newlines_count ) {
             push @aggregate_tokens, '';
         }
     }
-    
+
     return join( defined $join ? $join : "\n", @aggregate_tokens );
 }
 
-1; 
+1;
 
 __END__
 
@@ -103,7 +105,7 @@ Text::Fold - Turn “unicode” and “byte” string text into lines of a given
 
 =head1 VERSION
 
-This document describes Text::Fold version 0.1
+This document describes Text::Fold version 0.2
 
 =head1 SYNOPSIS
 

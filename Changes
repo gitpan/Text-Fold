@@ -1,5 +1,8 @@
 Revision history for Text-Fold
 
+0.2  Thu Nov 18 12:39:58 2010
+       Allow for string made up of all new lines.
+
 0.1  Wed Nov 17 22:34:39 2010
        Initial release.
 

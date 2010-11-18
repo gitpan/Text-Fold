@@ -1,4 +1,4 @@
-use Test::More tests => 13;
+use Test::More tests => 18;
 
 BEGIN {
 use_ok( 'Text::Fold' );
@@ -28,6 +28,12 @@ ok(
 ok(fold_text("\n\na b cd",3) eq "\n\na b\n cd", 'Beginning newlines preserved');
 ok(fold_text("a b cd\n\n",3) eq "a b\n cd\n\n", 'Trailing newlines preserved');
 ok(fold_text("\n\n\na b cd\n\n\n\n",3) eq "\n\n\na b\n cd\n\n\n\n", 'Beginning and Trailing newlines preserved');
+
+ok(fold_text('') eq '', 'empty is fine');
+ok(fold_text("\n") eq "\n", 'Single EOL');
+ok(fold_text("\r\n") eq "\n", 'Single MS EOL');
+ok(fold_text("\n\n\n") eq "\n\n\n", 'Multi EOL');
+ok(fold_text("\r\n\r\n\r\n") eq "\n\n\n", 'Multi MS EOL');
 
 # TODO break these out into more specific tests instead of multi things via one giant blob
 

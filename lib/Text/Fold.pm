@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Encode;
 
-$Text::Fold::VERSION = '0.2';
+$Text::Fold::VERSION = '0.3';
 
 sub import {
     no strict 'refs';
@@ -105,7 +105,7 @@ Text::Fold - Turn “unicode” and “byte” string text into lines of a given
 
 =head1 VERSION
 
-This document describes Text::Fold version 0.2
+This document describes Text::Fold version 0.3
 
 =head1 SYNOPSIS
 
@@ -137,7 +137,7 @@ All 3 formats should be considered 14 characters longs. You should get back the 
 
 =item * Folding long text (possibly containing multiple lines) into multiple lines not exceeding the given width in characters
 
-=item * connecting words that span the width limit with a soft hyphen
+=item * connecting words that span the width limit with a (loose) soft hyphen
 
 =back
 
@@ -221,7 +221,7 @@ Regardless of the type the intended character counts as 1 character. For example
 
 It returns a string of multiple lines each of which do not exceed the width. 
 
-Words that crossed the width boundary are notated with a soft hyphen.
+Words that crossed the width boundary are (loosely) notated with a soft hyphen.
 
 The string is the same type you passed in (either a Unicode string or a Byte string).
 

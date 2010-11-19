@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                Text-Fold
-version:             0.2
+version:             0.3
 abstract:            Turn “unicode” and “byte” string text into lines of a given width, soft-hyphenating broken words
 license:             ~
 author:              
@@ -8,6 +8,7 @@ author:
 generated_by:        ExtUtils::MakeMaker version 6.42
 distribution_type:   module
 requires:     
+    Encode:                        0
     Test::More:                    0
 meta-spec:
     url:     http://module-build.sourceforge.net/META-spec-v1.3.html

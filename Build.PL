@@ -9,6 +9,7 @@ my $builder = Module::Build->new(
     dist_version_from   => 'lib/Text/Fold.pm',
     requires => {
         'Test::More' => 0,
+        'Encode'     => 0,
     },
     add_to_cleanup      => [ 'Text-Fold-*' ],
 );

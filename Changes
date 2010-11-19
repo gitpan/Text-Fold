@@ -1,5 +1,13 @@
 Revision history for Text-Fold
 
+0.3  Fri Nov 19 11:24:42 2010
+       Add Encode to pre reqs in Build.PL and Maekfile.PL
+       Added diag() to test in order to help me track down test failure's:
+          i686-linux / 5.8.9: http://www.cpantesters.org/cpan/report/c05b3842-f362-11df-a005-f1772e454b7b
+          x86_64-linux-thread-multi / 5.8.3: http://www.cpantesters.org/cpan/report/29f98f96-f346-11df-a593-5470b0d14a89
+          x86_64-linux-thread-multi / 5.8.7: FAIL http://www.cpantesters.org/cpan/report/2b1ec3dc-f346-11df-a593-5470b0d14a89
+          x86_64-linux-thread-multi / 5.8.9: FAIL http://www.cpantesters.org/cpan/report/0992fb2a-f346-11df-86d9-6e6bb0d14a89
+       
 0.2  Thu Nov 18 12:39:58 2010
        Allow for string made up of all new lines.
 

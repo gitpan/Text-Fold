@@ -37,6 +37,72 @@ ok(fold_text("\r\n\r\n\r\n") eq "\n\n\n", 'Multi MS EOL');
 
 # TODO break these out into more specific tests instead of multi things via one giant blob
 
+diag("--- Byte string (via char) ---\n(" . fold_text('abcdefgh10XYZ
+1234567
+12345678
+123456789
+1234567890
+12345678901
+
+i am ten a
+i am ten an
+i am ten a z
+i am tenab
+i am tenabn
+i am tenab z
+
+
+123456“abcdef
+1234567“abcdef
+12345678“abcdef
+123456789“abcdef
+1234567890“abcdef',10) . ")\n\n"
+);
+
+diag("--- Byte string (via grapheme cluster) ---\n(" . fold_text("abcdefgh10XYZ
+1234567
+12345678
+123456789
+1234567890
+12345678901
+
+i am ten a
+i am ten an
+i am ten a z
+i am tenab
+i am tenabn
+i am tenab z
+
+
+123456\xE2\x80\x9Cabcdef
+1234567\xE2\x80\x9Cabcdef
+12345678\xE2\x80\x9Cabcdef
+123456789\xE2\x80\x9Cabcdef
+1234567890\xE2\x80\x9Cabcdef",10) . ")\n\n"
+);
+
+diag("--- Unicode string ---\n(" . fold_text("abcdefgh10XYZ
+1234567
+12345678
+123456789
+1234567890
+12345678901
+
+i am ten a
+i am ten an
+i am ten a z
+i am tenab
+i am tenabn
+i am tenab z
+
+
+123456\x{201c}abcdef
+1234567\x{201c}abcdef
+12345678\x{201c}abcdef
+123456789\x{201c}abcdef
+1234567890\x{201c}abcdef",10) . ")\n\n"
+);
+
 ok(
 fold_text('abcdefgh10XYZ
 1234567

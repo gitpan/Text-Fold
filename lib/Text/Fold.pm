@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Encode;
 
-$Text::Fold::VERSION = '0.3';
+$Text::Fold::VERSION = '0.4';
 
 sub import {
     no strict 'refs';
@@ -13,8 +13,37 @@ sub import {
 
 sub fold_text {
     my ( $orig_line, $width, $join ) = @_;
+    
+    my $conf;
+    if (defined $width && ref($width) eq 'HASH') {
+        $conf  = $width;
+        $width = undef;
+    }
     $width = defined $width ? abs( int($width) ) || 78 : 78;
 
+    if (!defined $conf && defined $join && ref($join) eq 'HASH') {
+        $conf = $join;
+        $join = undef;
+    }
+    $conf ||= {};
+    $join = $conf->{'join'} if exists $conf->{'join'};
+    
+    my $soft_hyphen_threshold = 0;
+    if (exists $conf->{'soft_hyphen_threshold'}) {
+        # Zero-but-true means default to ~20% of width
+        # Since this should be a number this works, if it could be a string then this would not work
+        if ( $conf->{'soft_hyphen_threshold'} && $conf->{'soft_hyphen_threshold'} == 0 ) {
+            $soft_hyphen_threshold = int($width / 5); 
+        }
+        else {
+            $soft_hyphen_threshold = abs(int($conf->{'soft_hyphen_threshold'}));
+        }
+        
+        if ($soft_hyphen_threshold < 3 || $soft_hyphen_threshold > $width) {
+            $soft_hyphen_threshold = $width;
+        }
+    }
+    
     my $line = Encode::decode_utf8($orig_line);
     my $turn_back_into_byte_string = $line eq $orig_line ? 0 : 1;
 
@@ -48,24 +77,45 @@ sub fold_text {
                 next LINE;
             }
 
-            my @tokens = unpack( "A$width" x ( CORE::length($part) / $width ) . ' A*', $part );
+            my @tokens = ($part =~ m/.{1,$width}/g);
+            # unpack(A) lops off trailing spaces on each chunk, if there's a better way I'm all ears!
+            # my @tokens = unpack( "A$width" x ( CORE::length($part) / $width ) . ' A*', $part );
 
             my $n;    # buffer
             my $last_index = $#tokens;
             for $n ( 0 .. $last_index ) {
-                if ( $n < $last_index ) {
+                if ( $n < $last_index ) {                   
                     if ( $tokens[$n] =~ m/[^ \t\f]\z/ && $tokens[ $n + 1 ] =~ m/\A[^ \t\f]/ ) {
-                        my $last_chr = CORE::substr( $tokens[$n], -2, 1 ) =~ m/[ \t\f]/ ? CORE::substr( $tokens[$n], -1, 1, " " ) : CORE::substr( $tokens[$n], -1, 1, "-" );
-
-                        if ($n) {
-                            push @aggregate_tokens, @tokens[ 0 .. $n - 1 ], $tokens[$n];
+            
+                        if ($soft_hyphen_threshold) {
+                            my ($end_chunk) = $tokens[$n] =~ m/([^ \t\f]+)\z/;
+                            my ($beg_chunk) = $tokens[$n + 1] =~ m/\A([^ \t\f]+)/;
+                            
+                            if ( CORE::length("$end_chunk$beg_chunk") <= $soft_hyphen_threshold ) {
+                                $tokens[$n] =~ s/[^ \t\f]+\z//;
+                                $tokens[$n + 1] =~ s/\A[^ \t\f]+//;
+                                push @aggregate_tokens, @tokens[ 0 .. $n];
+                                $part = join( '', $end_chunk, $beg_chunk, @tokens[ $n + 1 .. $last_index ] );
+                                goto PARSE_PART; 
+                            }  
+                            else {
+                                goto SOFT_HYPHEN;
+                            }                         
                         }
                         else {
-                            push @aggregate_tokens, $tokens[$n];
-                        }
+                          SOFT_HYPHEN:
+                            my $last_chr = CORE::substr( $tokens[$n], -2, 1 ) =~ m/[ \t\f]/ ? CORE::substr( $tokens[$n], -1, 1, " " ) : CORE::substr( $tokens[$n], -1, 1, "-" );
 
-                        $part = join( '', $last_chr, @tokens[ $n + 1 .. $last_index ] );
-                        goto PARSE_PART;
+                            if ($n) {
+                                push @aggregate_tokens, @tokens[ 0 .. $n - 1 ], $tokens[$n];
+                            }
+                            else {
+                                push @aggregate_tokens, $tokens[$n];
+                            }
+
+                            $part = join( '', $last_chr, @tokens[ $n + 1 .. $last_index ] );
+                            goto PARSE_PART;
+                        }
                     }
                 }
             }
@@ -105,7 +155,7 @@ Text::Fold - Turn “unicode” and “byte” string text into lines of a given
 
 =head1 VERSION
 
-This document describes Text::Fold version 0.3
+This document describes Text::Fold version 0.4
 
 =head1 SYNOPSIS
 
@@ -199,11 +249,11 @@ Did not soft-hyphen broken words.
 
 It exports fold_text() unless you bring it in a non-import() way, i.e.:
 
-    use Text::Fold; # we now have fold_text() in this scope since its import() was called
+    use Text::Fold; # we now have fold_text() in this package since its import() was called
 
-    use Text::Fold (); # we do not have fold_text() in this scope since its import() was not called, we have Text::Fold::fold_text()
+    use Text::Fold (); # we do not have fold_text() in this package since its import() was not called, we have Text::Fold::fold_text()
 
-    require Text::Fold; # we do not have fold_text() in this scope since its import() was not called, we have Text::Fold::fold_text()
+    require Text::Fold; # we do not have fold_text() in this package since its import() was not called, we have Text::Fold::fold_text()
 
 =head1 INTERFACE 
 
@@ -213,15 +263,61 @@ It has a single function: fold_text()
 
 The first argument is the string to fold (either a Unicode string or a Byte string).
 
+Additional arguments are described in the follow list:
+
+=over 4
+
+=item no hashref argument
+ 
 The second argument (optional) is the width. It defaults to 78.
 
 The third argument (optional) is the string to join the chunks back together again. It defaults to "\n".
 
-Regardless of the type the intended character counts as 1 character. For example, the Unicode string "Perl is the \x{32b7}\x{2122}" and the Byte strings "Perl is the \xe3\x8a\xb7\xe2\x84\xa2" and "Perl is the ㊷™" are all considered 14 characters longs
+    my $78_char_wide_text = fold_text( $string ); # 78 chars wide lines seperated by \n
+    
+    my $42_char_wide_text = fold_text( $string, 42, "\n\n\n" ); # 42 chars wide lines seperated by 3 newlines
+    
+    my $78_char_wide_text = fold_text( $string, undef, "\n\n\n" ); # 78 chars wide lines seperated by 3 newlines
+
+=item hashref argument
+
+The second or third argument, both optional, can instead be a hashref with behavior options. 
+
+If a hashref is passed as the second argument the default width is used and any third argument is ignored.
+
+If a hashref is passed as the third argument the second argument remains the same as when used under “no hashref argument” style calls.
+
+The keys to the hashref are all optional and can be:
+
+=over 4
+
+=item join
+
+The same value as the third argument when not using a hasref argument.
+
+=item soft_hyphen_threshold
+
+The value should be the maximim number of “non-whitespace” (See the blurb about whitespace under “What it is not meant for”) characters that a sequence can be before it is soft hyphenated.
+
+passing "0E0" will do a default value of about 20% of the width (i.e. I say “about” because it is $width/5 passed through int())
+
+Not passing this key (default) simply does not enable this behavior and results in a chunk of anysize (i.e. 2 or more) being soft hyphenated. 
+
+=back
+
+    # w/ sequence of 15 (i.e. int(78/5)) characters or less moved to the next line
+    my $78_char_wide_text = fold_text( $string,{ 'soft_hyphen_threshold' => '0E0'} );
+    
+    # w/ sequence of 20 characters or less moved to the next line
+    my $42_char_wide_text =fold_text( $string, 42, { 'soft_hyphen_threshold' => '20', 'join' => "\n\n\n"} );
+
+=back
+
+Regardless of the string type the intended character counts as 1 character. For example, the Unicode string "Perl is the \x{32b7}\x{2122}" and the Byte strings "Perl is the \xe3\x8a\xb7\xe2\x84\xa2" and "Perl is the ㊷™" are all considered 14 characters longs
 
 It returns a string of multiple lines each of which do not exceed the width. 
 
-Words that crossed the width boundary are (loosely) notated with a soft hyphen.
+Words that crossed the width boundary are (loosely) notated with a soft hyphen taking into account the 'soft_hyphen_threshold' setting if any.
 
 The string is the same type you passed in (either a Unicode string or a Byte string).
 
@@ -247,7 +343,7 @@ L<http://rt.cpan.org>.
 
 =head1 TODO
 
-Would anyone find array context useful?
+Would any one find array context useful?
 
 Do you know of a better/faster/etc way to do what it does?
 

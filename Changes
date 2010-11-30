@@ -1,5 +1,11 @@
 Revision history for Text-Fold
 
+0.4  Mon Nov 29 20:18:56 2010
+       - Address “dangling spaces” + unpack() issue
+       - Change test failure diag() to only output if one or more of the related tests fail
+       - add soft-hyphen threshold (and hashref arg interface)
+       - minor POD tweaks
+       
 0.3  Fri Nov 19 11:24:42 2010
        Add Encode to pre reqs in Build.PL and Maekfile.PL
        Added diag() to test in order to help me track down test failure's:

@@ -2,9 +2,9 @@ package Text::Fold;
 
 use strict;
 use warnings;
-use Encode;
+use String::UnicodeUTF8;
 
-$Text::Fold::VERSION = '0.4';
+$Text::Fold::VERSION = '0.5';
 
 sub import {
     no strict 'refs';
@@ -13,39 +13,40 @@ sub import {
 
 sub fold_text {
     my ( $orig_line, $width, $join ) = @_;
-    
+
     my $conf;
-    if (defined $width && ref($width) eq 'HASH') {
+    if ( defined $width && ref($width) eq 'HASH' ) {
         $conf  = $width;
         $width = undef;
     }
     $width = defined $width ? abs( int($width) ) || 78 : 78;
 
-    if (!defined $conf && defined $join && ref($join) eq 'HASH') {
+    if ( !defined $conf && defined $join && ref($join) eq 'HASH' ) {
         $conf = $join;
         $join = undef;
     }
     $conf ||= {};
     $join = $conf->{'join'} if exists $conf->{'join'};
-    
+
     my $soft_hyphen_threshold = 0;
-    if (exists $conf->{'soft_hyphen_threshold'}) {
+    if ( exists $conf->{'soft_hyphen_threshold'} ) {
+
         # Zero-but-true means default to ~20% of width
         # Since this should be a number this works, if it could be a string then this would not work
         if ( $conf->{'soft_hyphen_threshold'} && $conf->{'soft_hyphen_threshold'} == 0 ) {
-            $soft_hyphen_threshold = int($width / 5); 
+            $soft_hyphen_threshold = int( $width / 5 );
         }
         else {
-            $soft_hyphen_threshold = abs(int($conf->{'soft_hyphen_threshold'}));
+            $soft_hyphen_threshold = abs( int( $conf->{'soft_hyphen_threshold'} ) );
         }
-        
-        if ($soft_hyphen_threshold < 3 || $soft_hyphen_threshold > $width) {
+
+        if ( $soft_hyphen_threshold < 3 || $soft_hyphen_threshold > $width ) {
             $soft_hyphen_threshold = $width;
         }
     }
-    
-    my $line = Encode::decode_utf8($orig_line);
-    my $turn_back_into_byte_string = $line eq $orig_line ? 0 : 1;
+
+    my $turn_back_into_byte_string = String::UnicodeUTF8::is_unicode($orig_line) ? 0 : 1;
+    my $line = String::UnicodeUTF8::get_unicode($orig_line);
 
     # split(/\n/, "foo\nbar\nbaz\n") is (foo, bar, baz) not (foo, bar, baz, '')
     # split(/\n/, "foo\nbar\nbaz\n\n\n") is (foo, bar, baz) not (foo, bar, baz, '', '', '')
@@ -77,30 +78,31 @@ sub fold_text {
                 next LINE;
             }
 
-            my @tokens = ($part =~ m/.{1,$width}/g);
+            my @tokens = ( $part =~ m/.{1,$width}/g );
+
             # unpack(A) lops off trailing spaces on each chunk, if there's a better way I'm all ears!
             # my @tokens = unpack( "A$width" x ( CORE::length($part) / $width ) . ' A*', $part );
 
             my $n;    # buffer
             my $last_index = $#tokens;
             for $n ( 0 .. $last_index ) {
-                if ( $n < $last_index ) {                   
+                if ( $n < $last_index ) {
                     if ( $tokens[$n] =~ m/[^ \t\f]\z/ && $tokens[ $n + 1 ] =~ m/\A[^ \t\f]/ ) {
-            
+
                         if ($soft_hyphen_threshold) {
                             my ($end_chunk) = $tokens[$n] =~ m/([^ \t\f]+)\z/;
-                            my ($beg_chunk) = $tokens[$n + 1] =~ m/\A([^ \t\f]+)/;
-                            
+                            my ($beg_chunk) = $tokens[ $n + 1 ] =~ m/\A([^ \t\f]+)/;
+
                             if ( CORE::length("$end_chunk$beg_chunk") <= $soft_hyphen_threshold ) {
                                 $tokens[$n] =~ s/[^ \t\f]+\z//;
-                                $tokens[$n + 1] =~ s/\A[^ \t\f]+//;
-                                push @aggregate_tokens, @tokens[ 0 .. $n];
+                                $tokens[ $n + 1 ] =~ s/\A[^ \t\f]+//;
+                                push @aggregate_tokens, @tokens[ 0 .. $n ];
                                 $part = join( '', $end_chunk, $beg_chunk, @tokens[ $n + 1 .. $last_index ] );
-                                goto PARSE_PART; 
-                            }  
+                                goto PARSE_PART;
+                            }
                             else {
                                 goto SOFT_HYPHEN;
-                            }                         
+                            }
                         }
                         else {
                           SOFT_HYPHEN:
@@ -132,7 +134,7 @@ sub fold_text {
 
     if ($turn_back_into_byte_string) {
         for ( 0 .. $#aggregate_tokens ) {
-            $aggregate_tokens[$_] = Encode::encode_utf8( $aggregate_tokens[$_] );
+            $aggregate_tokens[$_] = String::UnicodeUTF8::get_utf8( $aggregate_tokens[$_] );
         }
     }
 
@@ -149,13 +151,15 @@ sub fold_text {
 
 __END__
 
+=encoding utf-8
+
 =head1 NAME
 
 Text::Fold - Turn “unicode” and “byte” string text into lines of a given width, soft-hyphenating broken words
 
 =head1 VERSION
 
-This document describes Text::Fold version 0.4
+This document describes Text::Fold version 0.5
 
 =head1 SYNOPSIS
 
